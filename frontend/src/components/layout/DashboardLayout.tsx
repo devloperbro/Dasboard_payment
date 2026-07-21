@@ -68,57 +68,51 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
       {/* Main content */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Header */}
-        <header className="bg-white shadow-sm z-10">
-          <div className="px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
-            <div className="flex items-center">
+        <header className="bg-white border-b border-gray-100 z-10 shadow-none">
+          <div className="px-4 sm:px-6 lg:px-8 py-3.5 flex justify-between items-center">
+            <div className="flex items-center gap-3">
               <button
                 className="md:hidden text-gray-500 hover:text-gray-700 focus:outline-none"
                 onClick={toggleSidebar}
               >
                 <span className="sr-only">Open sidebar</span>
-                <Menu className="h-6 w-6" />
+                <Menu className="h-5 w-5" />
               </button>
-              <h1 className="ml-3 text-xl font-semibold text-gray-800">{title}</h1>
+              <div>
+                <h1 className="text-lg font-bold text-gray-900 leading-tight">{title}</h1>
+                <p className="text-xs text-gray-400 hidden sm:block">{new Date().toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+              </div>
             </div>
-            
-            <div className="flex items-center space-x-4">
-              <button className="text-gray-500 hover:text-gray-700 focus:outline-none relative">
-                <Bell className="h-6 w-6" />
-                <span className="absolute top-0 right-0 block h-2 w-2 rounded-full bg-error-500 ring-2 ring-white"></span>
+
+            <div className="flex items-center space-x-2">
+              <button className="relative p-2 rounded-xl text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors">
+                <Bell className="h-5 w-5" />
+                <span className="absolute top-1.5 right-1.5 block h-2 w-2 rounded-full bg-red-500 ring-2 ring-white"></span>
               </button>
-              
-              <div className="relative">
-                <div className="flex items-center space-x-2 cursor-pointer p-1 rounded-lg hover:bg-gray-100">
-                  <div className="h-8 w-8 rounded-full bg-primary-500 flex items-center justify-center text-white">
-                    {user?.avatar ? (
-                      <img 
-                        src={user.avatar} 
-                        alt={user?.name || 'User'} 
-                        className="h-8 w-8 rounded-full" 
-                      />
-                    ) : (
-                      <User className="h-5 w-5" />
-                    )}
-                  </div>
-                  <div className="hidden md:block text-sm">
-                    <p className="font-medium text-gray-700">{user?.name}</p>
-                    <p className="text-xs text-gray-500 capitalize">{user?.role}</p>
-                  </div>
+
+              <div className="flex items-center gap-2.5 bg-gray-50 rounded-xl px-3 py-1.5 cursor-default border border-gray-100">
+                <div className="h-7 w-7 rounded-lg flex items-center justify-center text-white text-xs font-bold" style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}>
+                  {user?.name?.charAt(0)?.toUpperCase() || 'U'}
+                </div>
+                <div className="hidden md:block">
+                  <p className="text-sm font-semibold text-gray-800 leading-tight">{user?.name}</p>
+                  <p className="text-xs text-gray-400 capitalize">{user?.user_type}</p>
                 </div>
               </div>
-              
-              <button 
+
+              <button
                 onClick={logout}
-                className="text-gray-500 hover:text-gray-700 focus:outline-none"
+                title="Logout"
+                className="p-2 rounded-xl text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
               >
-                <LogOut className="h-6 w-6" />
+                <LogOut className="h-5 w-5" />
               </button>
             </div>
           </div>
         </header>
 
         {/* Main content area */}
-        <main className="flex-1 overflow-auto p-4 sm:p-6 lg:p-8">
+        <main className="flex-1 overflow-auto p-4 sm:p-6 bg-gray-50">
           {children}
         </main>
       </div>

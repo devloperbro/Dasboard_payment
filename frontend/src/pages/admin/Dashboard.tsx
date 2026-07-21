@@ -1,11 +1,17 @@
 import React, { useEffect, useState } from 'react';
+import { Users, Wallet, TrendingUp, TrendingDown, ArrowDownCircle, ArrowUpCircle, Sparkles } from 'lucide-react';
 import DashboardLayout from '../../components/layout/DashboardLayout';
-import SummaryCard from '../../components/dashboard/SummaryCard';
-import Table from '../../components/dashboard/Table';
-import StatCard from '../../components/dashboard/StatCard';
-import { adminMenuItems, mockSummaryCardsData, mockTransactions, mockPayouts, mockFundRequests } from '../../data/mockData';
-import { formatCurrency, formatDate, getStatusColor } from '../../utils/formatUtils';
+import { adminMenuItems } from '../../data/mockData';
+import { formatCurrency, formatDate, resolveStatus } from '../../utils/formatUtils';
 import api from '../../utils/axios';
+import {
+  BentoStat,
+  FeaturedBalanceCard,
+  AreaOverviewCard,
+  DarkTable,
+  DarkStatusBadge,
+} from '../../components/dashboard/DarkBento';
+
 interface DashboardData {
   totalUsers: number;
   totalBalance: number;
@@ -39,26 +45,6 @@ interface DashboardData {
 
 
 const AdminDashboard: React.FC = () => {
-  // Chart data for stat cards
-  const transactionChartData = [
-    { name: 'Jan', value: 1200 },
-    { name: 'Feb', value: 1800 },
-    { name: 'Mar', value: 1600 },
-    { name: 'Apr', value: 2200 },
-    { name: 'May', value: 1900 },
-    { name: 'Jun', value: 2800 },
-    { name: 'Jul', value: 2400 },
-  ];
-
-  const payoutChartData = [
-    { name: 'Jan', value: 800 },
-    { name: 'Feb', value: 1200 },
-    { name: 'Mar', value: 900 },
-    { name: 'Apr', value: 1400 },
-    { name: 'May', value: 1100 },
-    { name: 'Jun', value: 1800 },
-    { name: 'Jul', value: 1500 },
-  ];
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -80,303 +66,147 @@ const AdminDashboard: React.FC = () => {
     fetchDashboardData();
   }, []);
 
-  // Transaction columns
+  // Chart series built from the real last-7-days data returned by the API
+  const payinChartData =
+    dashboardData?.last7DaysData.map((item) => ({
+      name: new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      value: Number(item.payin) || 0,
+    })) || [];
+
+  const payoutChartData =
+    dashboardData?.last7DaysData.map((item) => ({
+      name: new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      value: Number(item.payout) || 0,
+    })) || [];
+
+  const balanceChartData =
+    dashboardData?.last7DaysData.map((item) => ({
+      name: new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      value: Number(item.profit) || 0,
+    })) || [];
+
+  const recentTransactions =
+    dashboardData?.recentPayoutTransactions.map((t) => ({
+      id: t.transaction_id,
+      user: t.user_name,
+      amount: t.amount,
+      type: 'Payout',
+      date: t.created_at,
+      status: t.status,
+    })) || [];
+
+  const recentPayouts =
+    dashboardData?.recentPayoutTransactions.map((t) => ({
+      id: t.transaction_id,
+      userName: t.user_name,
+      amount: t.amount,
+      fee: t.total_charges,
+      method: t.bank_name,
+      date: t.created_at,
+      status: t.status,
+    })) || [];
+
   const transactionColumns = [
-    {
-      header: 'ID',
-      accessor: 'id',
-      cell: (value: string) => (
-        <span className="text-xs font-medium text-gray-600">{value}</span>
-      ),
-    },
-    {
-      header: 'User',
-      accessor: 'user',
-    },
-    {
-      header: 'Amount',
-      accessor: 'amount',
-      cell: (value: number) => (
-        <span className="font-medium">{formatCurrency(value)}</span>
-      ),
-    },
+    { header: 'ID', accessor: 'id', cell: (v: string) => <span className="text-xs font-mono text-slate-500">{v}</span> },
+    { header: 'User', accessor: 'user', cell: (v: string) => <span className="font-medium text-white">{v}</span> },
+    { header: 'Amount', accessor: 'amount', cell: (v: number) => <span className="font-semibold text-white">{formatCurrency(v)}</span> },
     {
       header: 'Type',
       accessor: 'type',
-      cell: (value: string) => (
-        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${value === 'Payout' ? 'bg-success-100 text-success-800' : 'bg-error-100 text-error-800'
-          }`}>
-          {value.charAt(0).toUpperCase() + value.slice(1)}
+      cell: (v: string) => (
+        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold bg-indigo-400/10 text-indigo-300">
+          {v}
         </span>
       ),
     },
-    {
-      header: 'Date',
-      accessor: 'date',
-      cell: (value: string) => formatDate(value),
-    },
+    { header: 'Date', accessor: 'date', cell: (v: string) => <span className="text-slate-500">{formatDate(v)}</span> },
     {
       header: 'Status',
       accessor: 'status',
-      cell: (value: string) => (
-        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(value)}`}>
-          {value.charAt(0).toUpperCase() + value.slice(1)}
-        </span>
-      ),
+      cell: (v: string, row: any) => <DarkStatusBadge status={resolveStatus(v, row.date)} />,
     },
   ];
 
-  // Payout columns
   const payoutColumns = [
-    {
-      header: 'ID',
-      accessor: 'id',
-      cell: (value: string) => (
-        <span className="text-xs font-medium text-gray-600">{value}</span>
-      ),
-    },
-    {
-      header: 'User',
-      accessor: 'userName',
-    },
-    {
-      header: 'Amount',
-      accessor: 'amount',
-      cell: (value: number) => (
-        <span className="font-medium">{formatCurrency(value)}</span>
-      ),
-    },
-    {
-      header: 'Fee',
-      accessor: 'fee',
-      cell: (value: number) => (
-        <span className="text-gray-600">{formatCurrency(value)}</span>
-      ),
-    },
-    {
-      header: 'Method',
-      accessor: 'method'
-    },
-    {
-      header: 'Date',
-      accessor: 'date',
-      cell: (value: string) => formatDate(value),
-    },
+    { header: 'ID', accessor: 'id', cell: (v: string) => <span className="text-xs font-mono text-slate-500">{v}</span> },
+    { header: 'User', accessor: 'userName', cell: (v: string) => <span className="font-medium text-white">{v}</span> },
+    { header: 'Amount', accessor: 'amount', cell: (v: number) => <span className="font-semibold text-white">{formatCurrency(v)}</span> },
+    { header: 'Fee', accessor: 'fee', cell: (v: number) => <span className="text-slate-400">{formatCurrency(v)}</span> },
+    { header: 'Method', accessor: 'method', cell: (v: string) => <span className="text-slate-400">{v || '—'}</span> },
+    { header: 'Date', accessor: 'date', cell: (v: string) => <span className="text-slate-500">{formatDate(v)}</span> },
     {
       header: 'Status',
       accessor: 'status',
-      cell: (value: string) => (
-        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(value)}`}>
-          {value.charAt(0).toUpperCase() + value.slice(1)}
-        </span>
-      ),
+      cell: (v: string, row: any) => <DarkStatusBadge status={resolveStatus(v, row.date)} />,
     },
   ];
 
-  // Fund request columns
-  const fundRequestColumns = [
-    {
-      header: 'ID',
-      accessor: 'id',
-      cell: (value: string) => (
-        <span className="text-xs font-medium text-gray-600">{value}</span>
-      ),
-    },
-    {
-      header: 'User',
-      accessor: 'userName',
-    },
-    {
-      header: 'Amount',
-      accessor: 'amount',
-      cell: (value: number) => (
-        <span className="font-medium">{formatCurrency(value)}</span>
-      ),
-    },
-    {
-      header: 'Method',
-      accessor: 'method',
-    },
-    {
-      header: 'Date',
-      accessor: 'date',
-      cell: (value: string) => formatDate(value),
-    },
-    {
-      header: 'Status',
-      accessor: 'status',
-      cell: (value: string) => (
-        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(value)}`}>
-          {value.charAt(0).toUpperCase() + value.slice(1)}
-        </span>
-      ),
-    },
-    {
-      header: 'Action',
-      accessor: 'id',
-      cell: (value: string, row: any) => (
-        <div className="flex space-x-2">
-          {row.status === 'pending' && (
-            <>
-              <button
-                className="text-xs bg-success-500 hover:bg-success-600 text-white px-2 py-1 rounded"
-              >
-                Approve
-              </button>
-              <button
-                className="text-xs bg-error-500 hover:bg-error-600 text-white px-2 py-1 rounded"
-              >
-                Reject
-              </button>
-            </>
-          )}
-          {row.status !== 'pending' && (
-            <button
-              className="text-xs bg-gray-500 hover:bg-gray-600 text-white px-2 py-1 rounded"
-              disabled
-            >
-              Processed
-            </button>
-          )}
-        </div>
-      ),
-    },
-  ];
+  const totalPayin = Number(dashboardData?.totalPayin) || 0;
+  const totalPayout = Number(dashboardData?.totalPayout) || 0;
+  const todayPayin = Number(dashboardData?.todayPayin) || 0;
+  const todayPayout = Number(dashboardData?.todayPayout) || 0;
 
   return (
     <DashboardLayout menuItems={adminMenuItems} title="Admin Dashboard">
-      <div className="space-y-6">
-        {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-          <SummaryCard
-            title="Total Users"
-            value={(Number(dashboardData?.totalUsers) || 0)}
-            icon="users"
-            color="blue"
-          />
-          <SummaryCard
-            title="Total Balance"
-            value={(Number(dashboardData?.totalBalance) || 0)}
-            icon="Wallet"
-            color="success"
-          />
-          <SummaryCard
-            title="Total Payin"
-            value={(Number(dashboardData?.totalPayin) || 0)}
-            icon="TrendingDown"
-            color="warning"
-          />
-          <SummaryCard
-            title="Total Payout"
-            value={(Number(dashboardData?.totalPayout) || 0)}
-            icon="TrendingUp"
-            color="error"
-          />
-          <SummaryCard
-            title="Today's Payin"
-            value={(Number(dashboardData?.todayPayin) || 0)}
-            icon="TrendingDown"
-            color="warning"
-          />
-          <SummaryCard
-            title="Today's Payout"
-            value={(Number(dashboardData?.todayPayout) || 0)}
-            icon="TrendingUp"
-            color="error"
-          />
-          <SummaryCard
-            title="Total Profit"
-            value={(Number(dashboardData?.totalProfit) || 0)}
-            icon="TrendingUp"
-            color="purple"
-          />
-          <SummaryCard
-            title="Today's Profit"
-            value={(Number(dashboardData?.todayProfit) || 0)}
-            icon="TrendingUp"
-            color="orange"
-          />
-          <SummaryCard
-            title="OutFlow Amount"
-            value={(Number(dashboardData?.totaloutflow) || 0)}
-            icon="TrendingUp"
-            color="purple"
-          />
-          <SummaryCard
-            title="InFlow Amount"
-            value={(Number(dashboardData?.totalinflow) || 0)}
-            icon="TrendingUp"
-            color="orange"
-          />
+      {/* Full-bleed dark cinematic canvas — scoped to this page only */}
+      <div
+        className="-m-4 sm:-m-6 p-4 sm:p-6 min-h-[calc(100%+3rem)]"
+        style={{ background: 'radial-gradient(circle at top left, #111a30 0%, #0B1120 55%)' }}
+      >
+        {error && (
+          <div className="mb-4 px-4 py-3 rounded-xl bg-red-400/10 border border-red-400/20 text-red-300 text-sm">
+            {error}
+          </div>
+        )}
+
+        <div className="flex items-center gap-2 mb-5">
+          <Sparkles className="h-4 w-4 text-indigo-400" />
+          <p className="text-sm text-slate-400">Real-time overview of your platform</p>
         </div>
 
-        {/* Stat Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <StatCard
+        {/* ---------------- Bento Grid: Metrics ---------------- */}
+        <div
+          className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 mb-6"
+          style={{ gridAutoFlow: 'dense' }}
+        >
+          <FeaturedBalanceCard
+            value={Number(dashboardData?.totalBalance) || 0}
+            chartData={balanceChartData}
+            icon={Wallet}
+            className="col-span-2 row-span-2"
+          />
+
+          <BentoStat title="Total Users" value={Number(dashboardData?.totalUsers) || 0} icon={Users} color="#60a5fa" isCurrency={false} />
+          <BentoStat title="Total Payin" value={totalPayin} icon={ArrowDownCircle} color="#fbbf24" />
+          <BentoStat title="Total Payout" value={totalPayout} icon={ArrowUpCircle} color="#f87171" />
+          <BentoStat title="Total Profit" value={Number(dashboardData?.totalProfit) || 0} icon={TrendingUp} color="#a78bfa" />
+          <BentoStat title="Today's Payin" value={todayPayin} icon={ArrowDownCircle} color="#facc15" />
+          <BentoStat title="Today's Payout" value={todayPayout} icon={ArrowUpCircle} color="#fb7185" />
+          <BentoStat title="Today's Profit" value={Number(dashboardData?.todayProfit) || 0} icon={TrendingDown} color="#34d399" />
+        </div>
+
+        {/* ---------------- Area chart overview cards ---------------- */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+          <AreaOverviewCard
             title="Payin Overview"
-            value={formatCurrency(Number(dashboardData?.totalPayin) || 0)}
-            chartData={dashboardData?.last7DaysData.map(item => ({
-              name: new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-              value: Number(item.payin) || 0
-            })) || []}
-            color="#3B82F6"
-            trendValue={Number((((Number(dashboardData?.todayPayin) || 0) / (Number(dashboardData?.totalPayin) || 1)) * 100).toFixed(2))}
-            trendLabel="vs 7 days"
+            value={formatCurrency(totalPayin)}
+            trendValue={Number((((todayPayin) / (totalPayin || 1)) * 100).toFixed(2))}
+            chartData={payinChartData}
+            color="#22d3ee"
           />
-          <StatCard
+          <AreaOverviewCard
             title="Payout Overview"
-            value={formatCurrency(Number(dashboardData?.totalPayout) || 0)}
-            chartData={dashboardData?.last7DaysData.map(item => ({
-              name: new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-              value: Number(item.payout) || 0
-            })) || []}
-            color="#059669"
-            trendValue={Number((((Number(dashboardData?.todayPayout) || 0) / (Number(dashboardData?.totalPayout) || 1)) * 100).toFixed(2))}
-            trendLabel="vs 7 days"
+            value={formatCurrency(totalPayout)}
+            trendValue={Number((((todayPayout) / (totalPayout || 1)) * 100).toFixed(2))}
+            chartData={payoutChartData}
+            color="#a78bfa"
           />
         </div>
 
-        {/* Tables */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <Table
-            title="Recent Transactions"
-            filterable={false}
-            columns={transactionColumns}
-            data={dashboardData?.recentPayoutTransactions.map(transaction => ({
-              id: transaction.transaction_id,
-              user: transaction.user_name,
-              amount: transaction.amount,
-              type: 'Payout',
-              date: transaction.created_at,
-              status: transaction.status
-            })) || []}
-            pagination={false}
-          />
-
-          <Table
-            title="Recent Payouts"
-            columns={payoutColumns}
-            filterable={false}
-            data={dashboardData?.recentPayoutTransactions.map(transaction => ({
-              id: transaction.transaction_id,
-              userName: transaction.user_name,
-              amount: transaction.amount,
-              fee: transaction.total_charges,
-              method: transaction.bank_name,
-              date: transaction.created_at,
-              status: transaction.status
-            })) || []}
-            pagination={false}
-          />
-        </div>
-
-        <div>
-          <Table
-            title="Fund Requests"
-            description="Recent fund requests from users"
-            columns={fundRequestColumns}
-            data={mockFundRequests}
-          />
+        {/* ---------------- Tables ---------------- */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <DarkTable title="Recent Transactions" columns={transactionColumns} data={recentTransactions} loading={loading} />
+          <DarkTable title="Recent Payouts" columns={payoutColumns} data={recentPayouts} loading={loading} />
         </div>
       </div>
     </DashboardLayout>

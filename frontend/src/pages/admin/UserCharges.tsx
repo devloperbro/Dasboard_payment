@@ -92,7 +92,7 @@ export default function UserCharges() {
           id: charge.id.toString(),
           charge: parseFloat(charge.charge),
           gst: parseFloat(charge.gst),
-          date: new Date(charge.updated_at).toLocaleDateString()
+          date: charge.updated_at || charge.created_at || null
         }));
         setPlatformCharges(charges);
         setError(null);
@@ -526,10 +526,15 @@ export default function UserCharges() {
               <tbody className="bg-white divide-y divide-gray-200">
                 {platformCharges.map((charge) => (
                   <tr key={charge.id}>
-                    <td className="px-6 py-4 whitespace-nowrap">{charge.charge}%</td>
-                    <td className="px-6 py-4 whitespace-nowrap">{charge.gst}%</td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      {new Date(charge.date).toLocaleDateString()}
+                      <span className="font-semibold text-blue-700">{charge.charge}%</span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className="font-semibold text-purple-700">{charge.gst}%</span>
+                      <span className="ml-2 text-xs text-gray-400">(effective: {(charge.charge * (1 + charge.gst / 100)).toFixed(2)}%)</span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-gray-600">
+                      {charge.date ? new Date(charge.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <button

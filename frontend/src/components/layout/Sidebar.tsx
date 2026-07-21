@@ -39,43 +39,48 @@ const Sidebar: React.FC<SidebarProps> = ({ items = [], isOpen, onClose }) => {
   };
 
   return (
-    <div className={`w-64 bg-primary-900 text-white flex flex-col h-full transition-all duration-300 ${isOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}>
+    <div className={`w-64 flex flex-col h-full transition-all duration-300 ${isOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}
+      style={{ background: 'linear-gradient(180deg, #1e293b 0%, #0f172a 100%)' }}>
       {/* Logo */}
-      <div className="p-6 border-b border-primary-800">
+      <div className="px-6 py-5 border-b border-white/10">
         <div className="flex items-center space-x-3">
-          <div className="h-8 w-8 bg-white rounded-md flex items-center justify-center">
-            <div className="h-6 w-6 text-primary-900">
-              {React.createElement(getIconByName('Wallet'), { size: 20 })}
+          <div className="h-9 w-9 rounded-xl flex items-center justify-center shadow-lg" style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}>
+            <div className="text-white">
+              {React.createElement(getIconByName('Wallet'), { size: 18 })}
             </div>
           </div>
-          <span className="text-xl font-medium">{getRoleTitle()}</span>
+          <div>
+            <span className="text-white font-bold text-base tracking-wide">{getRoleTitle()}</span>
+            <p className="text-slate-400 text-xs">Management System</p>
+          </div>
         </div>
       </div>
-      
+
       {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto py-4">
-        <ul className="space-y-1">
+      <nav className="flex-1 overflow-y-auto py-4 px-3">
+        <ul className="space-y-0.5">
           {(items || []).map((item) => {
             const Icon = getIconByName(item.icon);
             const active = isPathActive(item.path);
-            
+
             return (
               <li key={item.path}>
                 <NavLink
                   to={item.path}
                   onClick={onClose}
                   className={`
-                    flex items-center px-6 py-3 text-sm
+                    flex items-center px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-150
                     ${active
-                      ? 'bg-primary-800 text-white border-l-4 border-accent-400'
-                      : 'text-primary-100 hover:bg-primary-800 hover:text-white'
+                      ? 'text-white shadow-md'
+                      : 'text-slate-400 hover:text-white hover:bg-white/8'
                     }
                   `}
+                  style={active ? { background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' } : {}}
                 >
-                  <Icon className="h-5 w-5 mr-3" />
+                  <Icon className="h-4 w-4 mr-3 flex-shrink-0" />
                   <span>{item.title}</span>
                   {item.badge && (
-                    <span className="ml-auto bg-accent-500 text-white text-xs px-2 py-0.5 rounded-full">
+                    <span className="ml-auto bg-indigo-500 text-white text-xs px-2 py-0.5 rounded-full">
                       {item.badge}
                     </span>
                   )}
@@ -85,12 +90,18 @@ const Sidebar: React.FC<SidebarProps> = ({ items = [], isOpen, onClose }) => {
           })}
         </ul>
       </nav>
-      
+
       {/* Footer */}
-      <div className="p-4 border-t border-primary-800 text-xs text-primary-300">
-        <p className="text-center">
-          ZintexPay &copy; {new Date().getFullYear()}
-        </p>
+      <div className="p-4 border-t border-white/10">
+        <div className="flex items-center space-x-2 px-2">
+          <div className="h-7 w-7 rounded-lg bg-white/10 flex items-center justify-center">
+            <span className="text-white text-xs font-bold">{user?.name?.charAt(0)?.toUpperCase() || 'U'}</span>
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-white text-xs font-medium truncate">{user?.name || 'User'}</p>
+            <p className="text-slate-400 text-xs truncate capitalize">{user?.user_type || 'user'}</p>
+          </div>
+        </div>
       </div>
     </div>
   );

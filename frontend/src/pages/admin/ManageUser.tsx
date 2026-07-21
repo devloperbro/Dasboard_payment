@@ -111,41 +111,41 @@ export default function ManageUser() {
       header: 'Action',
       accessor: 'id',
       cell: (value: number) => (
-        <div className="flex space-x-2">
+        <div className="flex items-center gap-1.5">
           <button
             onClick={() => navigate(`/admin/manage-user/${value}`)}
-            className="text-primary-600 hover:text-primary-800"
+            className="p-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"
             title="View User"
           >
-            <Eye className="h-5 w-5" />
+            <Eye className="h-4 w-4" />
           </button>
           <button
             onClick={() => navigate(`/admin/manage-user/${value}/edit`)}
-            className="text-secondary-600 hover:text-secondary-800"
+            className="p-1.5 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition-colors"
             title="Edit User"
           >
-            <Edit className="h-5 w-5" />
+            <Edit className="h-4 w-4" />
           </button>
           <button
             onClick={() => navigate(`/admin/manage-user/${value}/charges`)}
-            className="text-accent-600 hover:text-accent-800"
-            title="User Settings"
+            className="p-1.5 rounded-lg bg-amber-50 text-amber-600 hover:bg-amber-100 transition-colors"
+            title="User Charges"
           >
-            <Settings className="h-5 w-5" />
+            <Settings className="h-4 w-4" />
           </button>
           <button
             onClick={() => navigate(`/admin/manage-user/${value}/callbacks`)}
-            className="text-warning-600 hover:text-warning-800"
+            className="p-1.5 rounded-lg bg-purple-50 text-purple-600 hover:bg-purple-100 transition-colors"
             title="Manage Callbacks"
           >
-            <RefreshCw className="h-5 w-5" />
+            <RefreshCw className="h-4 w-4" />
           </button>
           <button
             onClick={() => navigate(`/admin/manage-user/${value}/add-fund`)}
-            className="text-success-600 hover:text-success-800"
+            className="p-1.5 rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-100 transition-colors"
             title="Add Fund"
           >
-            <Wallet className="h-5 w-5" />
+            <Wallet className="h-4 w-4" />
           </button>
         </div>
       ),
@@ -160,7 +160,8 @@ export default function ManageUser() {
           <h1 className="text-2xl font-bold text-gray-900">Manage Users</h1>
           <Link
             to="/admin/manage-user/add"
-            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+            className="inline-flex items-center px-4 py-2 rounded-xl text-sm font-semibold text-white shadow-sm transition-all hover:opacity-90"
+            style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}
           >
             <Plus className="h-5 w-5 mr-2" />
             Add User

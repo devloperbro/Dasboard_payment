@@ -33,17 +33,32 @@ export const truncateText = (text: string, maxLength: number): string => {
   return `${text.substring(0, maxLength)}...`;
 };
 
-// Format transaction status
-export const getStatusColor = (status: string): string => {
-  const statusColors: Record<string, string> = {
-    completed: 'bg-success-100 text-success-800',
-    pending: 'bg-warning-100 text-warning-800',
-    failed: 'bg-error-100 text-error-800',
-    approved: 'bg-success-100 text-success-800',
-    rejected: 'bg-error-100 text-error-800',
-    resolved: 'bg-success-100 text-success-800',
-    cancelled: 'bg-error-100 text-error-800',
-  };
+// Resolve pending status: if pending > 1 hour, treat as failed
+export const resolveStatus = (status: string, createdAt?: string): string => {
+  if (status?.toLowerCase() === 'pending' && createdAt) {
+    const created = new Date(createdAt).getTime();
+    const now = Date.now();
+    if (now - created > 60 * 60 * 1000) {
+      return 'failed';
+    }
+  }
+  return status?.toLowerCase() || 'unknown';
+};
 
-  return statusColors[status] || 'bg-gray-100 text-gray-800';
+// Format transaction status
+export const getStatusColor = (status: string, createdAt?: string): string => {
+  const resolved = resolveStatus(status, createdAt);
+  const statusColors: Record<string, string> = {
+    completed: 'bg-emerald-100 text-emerald-700 ring-1 ring-emerald-200',
+    success: 'bg-emerald-100 text-emerald-700 ring-1 ring-emerald-200',
+    pending: 'bg-amber-100 text-amber-700 ring-1 ring-amber-200',
+    failed: 'bg-red-100 text-red-700 ring-1 ring-red-200',
+    approved: 'bg-emerald-100 text-emerald-700 ring-1 ring-emerald-200',
+    rejected: 'bg-red-100 text-red-700 ring-1 ring-red-200',
+    resolved: 'bg-emerald-100 text-emerald-700 ring-1 ring-emerald-200',
+    cancelled: 'bg-red-100 text-red-700 ring-1 ring-red-200',
+    inactive: 'bg-gray-100 text-gray-600 ring-1 ring-gray-200',
+    active: 'bg-emerald-100 text-emerald-700 ring-1 ring-emerald-200',
+  };
+  return statusColors[resolved] || 'bg-gray-100 text-gray-600';
 };
