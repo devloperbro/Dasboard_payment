@@ -4,7 +4,7 @@ import DashboardLayout from '../../components/layout/DashboardLayout';
 import Table from '../../components/dashboard/Table';
 import { adminMenuItems } from '../../data/mockData';
 import { formatCurrency } from '../../utils/formatUtils';
-import SettlementHistoryModal from '../admin/settlementHistoryModal';
+import SettlementHistoryModal from '../admin/SettlementHistoryModal';
 
 // Mock data for settlements
 const mockSettlements = [

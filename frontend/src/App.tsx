@@ -22,6 +22,8 @@ import ChargeBack from './pages/admin/ChargeBack';
 import ChargeBackReport from './pages/admin/ChargeBackReport';
 import ManageFundRequest from './pages/admin/ManageFundRequest';
 import Settlement from './pages/admin/Settlement';
+import PaymentSettings from './pages/admin/PaymentSettings';
+import ChangePassword from './pages/admin/ChangePassword';
 import UserFundRequest from './pages/user/FundRequest';
 import UserWalletReport from './pages/user/WalletReport';
 import UserPayoutReport from './pages/user/PayoutReport';
@@ -41,6 +43,9 @@ function App() {
         <Routes>
           <Route path="/login" element={<LoginPage />} />
 
+          {/* Change password — accessible to all authenticated roles */}
+          <Route path="/change-password" element={<ChangePassword />} />
+
           {/* Admin Routes */}
           <Route path="/admin" element={<ProtectedRoute role="admin"><AdminDashboard /></ProtectedRoute>} />
           <Route path="/admin/manage-user" element={<ProtectedRoute role="admin"><ManageUser /></ProtectedRoute>} />
@@ -59,6 +64,7 @@ function App() {
           <Route path="/admin/chargeback-report" element={<ProtectedRoute role="admin"><ChargeBackReport /></ProtectedRoute>} />
           <Route path="/admin/manage-fund-request" element={<ProtectedRoute role="admin"><ManageFundRequest /></ProtectedRoute>} />
           <Route path="/admin/settlement" element={<ProtectedRoute role="admin"><Settlement /></ProtectedRoute>} />
+          <Route path="/admin/payment-settings" element={<ProtectedRoute role="admin"><PaymentSettings /></ProtectedRoute>} />
 
           {/* User Routes */}
           <Route path="/user" element={<ProtectedRoute role="user"><UserDashboard /></ProtectedRoute>} />
