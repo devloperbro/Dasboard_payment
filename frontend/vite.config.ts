@@ -19,9 +19,9 @@ export default defineConfig({
       }
     }
   },
-  // Enable source maps for better debugging
+  // Source maps disabled for production (prevents exposing source to browser)
   build: {
-    sourcemap: true
+    sourcemap: false
   },
   // Enable detailed logging
   logLevel: 'info'

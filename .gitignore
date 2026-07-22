@@ -1,24 +1,33 @@
 # Dependencies
 node_modules/
 frontend/node_modules/
+backend/node_modules/
 
 # Logs
 *.log
 combined.log
 error.log
 logs/
+backend/logs/
 
-# Environment variables
+# Environment variables — never commit real secrets
 .env
 .env.local
 .env.development
 .env.production
 .env.*.local
+backend/.env
+frontend/.env
+# Allow the example template
+!.env.example
+!backend/.env.example
+!frontend/.env.example
 
 # Build output
 dist/
 build/
 frontend/dist/
+backend/dist/
 
 # OS files
 .DS_Store
@@ -26,3 +35,15 @@ Thumbs.db
 
 # Editor
 .idea/
+.vscode/
+
+# Docker volumes (local only)
+infrastructure/volumes/
+
+# Test coverage
+coverage/
+backend/coverage/
+frontend/coverage/
+
+# Internal AI/agent instruction files — kept locally, not for repository
+agentsaksham.md

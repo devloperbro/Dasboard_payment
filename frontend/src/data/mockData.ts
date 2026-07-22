@@ -313,6 +313,7 @@ export const adminMenuItems: MenuItem[] = [
   { title: 'Manage Staff', path: '/admin/manage-staff', icon: 'UserCog' },
   { title: 'Manage Payout', path: '/admin/manage-payout', icon: 'ArrowUpRight' },
   { title: 'Bulk Payout', path: '/admin/bulk-payout', icon: 'Layers' },
+  { title: 'Payment Settings', path: '/admin/payment-settings', icon: 'Settings' },
 ];
 
 export const userMenuItems: MenuItem[] = [

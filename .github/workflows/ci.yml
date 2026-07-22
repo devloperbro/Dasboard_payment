@@ -1,0 +1,126 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: ghcr.io/${{ github.repository_owner }}/buddypay
+
+jobs:
+  # -------------------------------------------------------
+  # Backend: install + lint + build check
+  # -------------------------------------------------------
+  backend:
+    name: Backend CI
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check for secrets accidentally committed
+        run: |
+          if grep -rn "JWT_SECRET\s*=\s*['\"][^$]" src/ 2>/dev/null | grep -v '.env.example'; then
+            echo "FAIL: JWT_SECRET hard-coded in source"
+            exit 1
+          fi
+          echo "Secret check passed"
+
+      - name: Validate app starts (syntax check)
+        run: node --check src/app.js
+
+  # -------------------------------------------------------
+  # Frontend: install + lint + build
+  # -------------------------------------------------------
+  frontend:
+    name: Frontend CI
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        env:
+          VITE_API_URL: https://api.buddypay.com/api
+        run: npm run build
+
+  # -------------------------------------------------------
+  # Docker: build images (on push to main only)
+  # -------------------------------------------------------
+  docker:
+    name: Build & Push Docker Images
+    runs-on: ubuntu-latest
+    needs: [backend, frontend]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set image tag
+        id: tag
+        run: echo "sha=${GITHUB_SHA::8}" >> $GITHUB_OUTPUT
+
+      - name: Build and push backend image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          push: true
+          tags: |
+            ${{ env.IMAGE_PREFIX }}-backend:${{ steps.tag.outputs.sha }}
+            ${{ env.IMAGE_PREFIX }}-backend:latest
+
+      - name: Build and push frontend image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          push: true
+          tags: |
+            ${{ env.IMAGE_PREFIX }}-frontend:${{ steps.tag.outputs.sha }}
+            ${{ env.IMAGE_PREFIX }}-frontend:latest
+
+      - name: Image digest summary
+        run: |
+          echo "Backend:  ${{ env.IMAGE_PREFIX }}-backend:${{ steps.tag.outputs.sha }}"
+          echo "Frontend: ${{ env.IMAGE_PREFIX }}-frontend:${{ steps.tag.outputs.sha }}"

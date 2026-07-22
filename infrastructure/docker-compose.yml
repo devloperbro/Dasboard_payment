@@ -1,0 +1,249 @@
+# =============================================================
+# docker-compose.yml — BuddyPay Production-Parity Stack
+#
+# Services:
+#   nginx          - Reverse proxy
+#   frontend       - React/Vite SPA (nginx-served)
+#   backend        - Express API (API process only — no worker)
+#   worker         - Bull payment queue processor (separate container)
+#   mysql          - Sequelize relational DB
+#   mongodb        - Mongoose document store
+#   redis-cache    - Rate limiting / session cache (LRU, port 6379)
+#   redis-payment  - Bull queue store (AOF, no eviction, port 6380)
+#
+# Usage:
+#   cp ../.env.example ../.env  # fill in secrets
+#   docker compose up -d
+#   docker compose logs -f backend worker
+#
+# For production: use external managed databases, not this compose.
+# =============================================================
+
+version: '3.9'
+
+networks:
+  buddypay-net:
+    driver: bridge
+
+volumes:
+  mysql_data:
+  mongodb_data:
+  redis_cache_data:
+  redis_payment_data:
+  backend_logs:
+
+services:
+
+  # ---- Nginx reverse proxy ----
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: buddypay-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - backend
+      - frontend
+    networks:
+      - buddypay-net
+
+  # ---- Frontend (React/Vite built with nginx) ----
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+    container_name: buddypay-frontend
+    expose:
+      - "80"
+    restart: unless-stopped
+    networks:
+      - buddypay-net
+
+  # ---- Backend API (API ONLY — no Bull processor) ----
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: buddypay-backend
+    restart: unless-stopped
+    expose:
+      - "3000"
+    ports:
+      - "${API_PORT:-3000}:3000"
+    networks:
+      - buddypay-net
+    depends_on:
+      mysql:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+      redis-payment:
+        condition: service_healthy
+      redis-cache:
+        condition: service_started
+    environment:
+      NODE_ENV: ${NODE_ENV:-production}
+      PORT: 3000
+      # MySQL
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_NAME: ${DB_NAME:-buddypay}
+      DB_USER: ${DB_USER:-buddypay}
+      DB_PASS: ${DB_PASS}
+      # MongoDB
+      MONGO_URI: mongodb://mongodb:27017/buddypay
+      # Redis — payment (Bull queues)
+      REDIS_PAYMENT_HOST: redis-payment
+      REDIS_PAYMENT_PORT: 6380
+      REDIS_PAYMENT_PASSWORD: ${REDIS_PAYMENT_PASSWORD:-}
+      # Redis — cache (rate limiting)
+      REDIS_CACHE_HOST: redis-cache
+      REDIS_CACHE_PORT: 6379
+      REDIS_CACHE_PASSWORD: ${REDIS_CACHE_PASSWORD:-}
+      # JWT
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-24h}
+      # CORS
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost}
+      # Payment providers (credentials from env ONLY — never stored in DB)
+      RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID:-}
+      RAZORPAY_KEY_SECRET: ${RAZORPAY_KEY_SECRET:-}
+      PHONEPE_MERCHANT_ID: ${PHONEPE_MERCHANT_ID:-}
+      PHONEPE_SALT_KEY: ${PHONEPE_SALT_KEY:-}
+      PHONEPE_SALT_INDEX: ${PHONEPE_SALT_INDEX:-1}
+    volumes:
+      - backend_logs:/app/logs
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # ---- Payment Worker (SEPARATE container — processes Bull queue jobs) ----
+  worker:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: buddypay-worker
+    command: ["node", "src/worker.js"]
+    restart: unless-stopped
+    networks:
+      - buddypay-net
+    depends_on:
+      mysql:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+      redis-payment:
+        condition: service_healthy
+    environment:
+      NODE_ENV: ${NODE_ENV:-production}
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_NAME: ${DB_NAME:-buddypay}
+      DB_USER: ${DB_USER:-buddypay}
+      DB_PASS: ${DB_PASS}
+      MONGO_URI: mongodb://mongodb:27017/buddypay
+      REDIS_PAYMENT_HOST: redis-payment
+      REDIS_PAYMENT_PORT: 6380
+      REDIS_PAYMENT_PASSWORD: ${REDIS_PAYMENT_PASSWORD:-}
+      # Worker also reads REDIS_HOST/PORT as fallback (queue.config.js)
+      REDIS_HOST: redis-payment
+      REDIS_PORT: 6380
+      JWT_SECRET: ${JWT_SECRET}
+      RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID:-}
+      RAZORPAY_KEY_SECRET: ${RAZORPAY_KEY_SECRET:-}
+      PHONEPE_MERCHANT_ID: ${PHONEPE_MERCHANT_ID:-}
+      PHONEPE_SALT_KEY: ${PHONEPE_SALT_KEY:-}
+    volumes:
+      - backend_logs:/app/logs
+
+  # ---- MySQL ----
+  mysql:
+    image: mysql:8.0
+    container_name: buddypay-mysql
+    restart: unless-stopped
+    networks:
+      - buddypay-net
+    environment:
+      MYSQL_DATABASE: ${DB_NAME:-buddypay}
+      MYSQL_USER: ${DB_USER:-buddypay}
+      MYSQL_PASSWORD: ${DB_PASS}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+    volumes:
+      - mysql_data:/var/lib/mysql
+    ports:
+      - "3306:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # ---- MongoDB ----
+  mongodb:
+    image: mongo:7.0
+    container_name: buddypay-mongodb
+    restart: unless-stopped
+    networks:
+      - buddypay-net
+    volumes:
+      - mongodb_data:/data/db
+    ports:
+      - "27017:27017"
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  # ---- Redis — Cache (LRU, no persistence, ephemeral) ----
+  redis-cache:
+    image: redis:7.2-alpine
+    container_name: buddypay-redis-cache
+    restart: unless-stopped
+    networks:
+      - buddypay-net
+    command: >
+      redis-server
+      --bind 0.0.0.0
+      --port 6379
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+      --save ""
+      --appendonly no
+    volumes:
+      - redis_cache_data:/data
+    ports:
+      - "6379:6379"
+
+  # ---- Redis — Payment (AOF persistent, NO eviction — Bull queues must not lose jobs) ----
+  redis-payment:
+    image: redis:7.2-alpine
+    container_name: buddypay-redis-payment
+    restart: unless-stopped
+    networks:
+      - buddypay-net
+    command: >
+      redis-server
+      --bind 0.0.0.0
+      --port 6380
+      --maxmemory-policy noeviction
+      --appendonly yes
+      --appendfsync everysec
+    volumes:
+      - redis_payment_data:/data
+    ports:
+      - "6380:6380"
+    healthcheck:
+      test: ["CMD", "redis-cli", "-p", "6380", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+
